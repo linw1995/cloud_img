@@ -1,0 +1,8 @@
+test_db:
+    image: mysql
+    environment:
+        - MYSQL_ROOT_PASSWORD=admin
+        - MYSQL_ROOT_HOST=%
+        - MYSQL_DATABASE=cloud_img_test
+    ports:
+        - 3306:3306

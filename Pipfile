@@ -1,0 +1,38 @@
+[[source]]
+
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+
+[packages]
+
+aiohttp = "*"
+peewee = "*"
+peewee-async = "*"
+aiomysql = "*"
+aiohttp-security = "*"
+jsonschema = "*"
+pyjwt = "*"
+pyyaml = "*"
+werkzeug = "*"
+aiohttp-debugtoolbar = "*"
+
+
+[dev-packages]
+
+yapf = "*"
+"flake8" = "*"
+isort = "*"
+pytest = "*"
+pytest-aiohttp = "*"
+rope = "*"
+pytest-faker = "*"
+pytest-mock = "*"
+freezegun = "*"
+pytest-cov = "*"
+
+
+[requires]
+
+python_version = "3.6"
