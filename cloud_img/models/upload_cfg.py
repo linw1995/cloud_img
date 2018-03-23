@@ -1,21 +1,15 @@
 import abc
-import enum
 import json
 import logging
+import re
 from datetime import datetime
 
 import peewee
 import yarl
 
-
-__all__ = ('UploadCfg', 'ImageWithUploadCfg', 'RequestType', 'Adapter')
+__all__ = ('UploadCfg', 'ImageWithUploadCfg', 'Adapter')
 
 logger = logging.getLogger(__file__)
-
-
-class RequestType(enum.Enum):
-    GET = 1
-    POST = 2
 
 
 class JSONField(peewee.TextField):
@@ -42,21 +36,30 @@ class Adapter(abc.ABCMeta):
     """
 
     @abc.abstractmethod
-    async def send(self, url, headers=None, json=None, data=None):
-        """send the request to server,
-        then recive the response and return it"""
+    async def send(self, method, url, headers=None, json=None, data=None):
+        """
+        send the request to server,
+        then recive the response and return the decoded body.
 
-    @abc.abstractmethod
-    def query_json(self, querystr):
-        pass
+        Parameters
+        ----------
+        method : method
+            request method: 'post', 'get'.
+        url : yarl.URL
+            upload url.
+        headers : dict
+            request headers.
+        json : dict
+            request body, content-type: app*/json.
+        data : bytes
+            request body, formdata or binary.
 
-    @abc.abstractmethod
-    def query_xml(self, querystr):
-        pass
+        Returns
+        -------
+        str
+            response body
 
-    @abc.abstractmethod
-    def query_regex(self, querystr):
-        pass
+        """
 
 
 class UploadCfg(peewee.Model):
@@ -70,9 +73,9 @@ class UploadCfg(peewee.Model):
     user : User
         user who own this custom upload config.
     request_url : str
-        request_url for upload.
-    request_type : RequestType
-
+        request url for upload.
+    request_method : srt
+        request method
     request_querystring : Mapping
         url query string
     request_headers : Mapping
@@ -92,8 +95,8 @@ class UploadCfg(peewee.Model):
     user = peewee.ForeignKeyField(User, related_name='servers')
 
     request_url = peewee.TextField(null=False)
-    request_type = peewee.SmallIntegerField(
-        default=RequestType.POST, null=False)
+    request_method = peewee.CharField(
+        max_length=10, default='post', null=False)
     # TODO: using yarl.URL._QUERY_QUOTER to validate the property
     request_querystring = JSONField()
     # TODO: using aio-libs' multidict.CIMultiDict to validate the property
@@ -136,22 +139,53 @@ class UploadCfg(peewee.Model):
 
         await adapter.send(url)
 
-    async def query_response(self, adapter):
+    def _query_response(self, response_body, content_type, querystr):
+        if content_type == 'json':
+            raise NotImplementedError()
+        elif content_type == 'xml':
+            raise NotImplementedError()
+        elif content_type == 'regex':
+            raise NotImplementedError()
+
+        raise ValueError(f'content_type {content_type!r} is not supported')
+
+    def query_response(self, response_body):
         """
         Query the image's info from the response
 
         Parameters
         ----------
-        adapter : Adapter
-            adapting the different clients to parse the response.
+        response_body : str
+            response body.
 
         Returns
         -------
         dict
-            contains image's url, thumbnail_url, delete_url and etc.
+            contains image's url, thumbnail_url, delete_url.
 
         """
-        pass
+        pattern = re.compile(r'(?P<content_type>\S+):(?P<querystr>[\S]+)')
+
+        url_querystrs = dict(
+            image_url=self.image_url_querystr,
+            thumbnail_url=self.thumbnail_url_querystr,
+            delete_url=self.delete_url_querystr)
+        rv = {}
+
+        for url_type, url_querystr in url_querystrs.items():
+            if not url_querystr:
+                rv[url_type] = ''
+                continue
+            match = pattern.match(url_querystr)
+            if match is None:
+                raise ValueError(
+                    f'{url_type}_querystr {url_querystr} is invalid.')
+
+            group = match.groupdict()
+            url = self._query_response(response_body, **group)
+            rv[url_type] = url
+
+        return rv
 
 
 class ImageWithUploadCfg(peewee.Model):

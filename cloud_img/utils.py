@@ -1,6 +1,7 @@
 import logging
 import logging.handlers
 import pathlib
+import re
 
 import yaml
 from aiohttp_security import AbstractAuthorizationPolicy
@@ -109,3 +110,27 @@ class AuthorizationPolicy(AbstractAuthorizationPolicy):
             except User.DoesNotExist:
                 return None
             return user_id
+
+
+def parse_xpath(path, resoure, getter):
+    """
+    parse xpath to load the value through the path.
+
+    1. unescape the xpath.
+    2. use regex to parse it.
+    3. load the resource.
+
+    + TODO: unescape the xpath
+    + TODO: exception handler
+    + TODO: unit test required
+    """
+    arr_index = re.compile(r'((?P<arr>[^\s\.\[\]]+)'
+                           r'((?P<left>\[)(?P<index>\d+)(?(left)\]))?)+?')
+    for match in arr_index.findall(path):
+        group = match.groupdict()
+        key = group['key']
+        resoure = getter(resoure, key)
+        if 'index' in group:
+            index = int(group['index'])
+            resoure = getter(resoure, index)
+    return resoure
