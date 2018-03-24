@@ -2,10 +2,14 @@ import abc
 import json
 import logging
 import re
+import reprlib
 from datetime import datetime
 
+import lxml.etree
 import peewee
 import yarl
+
+from ..utils import query_json, query_regex, query_xml
 
 
 __all__ = ('UploadCfg', 'ImageWithUploadCfg', 'Adapter')
@@ -17,7 +21,7 @@ class JSONField(peewee.TextField):
     def db_value(self, value):
         try:
             return json.dumps(value)
-        except ValueError as err:
+        except ValueError as err:  # pragma: no cover
             logger.error('json.dumps fails to encode the value by error: %s',
                          err)
         return None
@@ -25,7 +29,7 @@ class JSONField(peewee.TextField):
     def python_value(self, value):
         try:
             return json.loads(value)
-        except json.JSONDecodeError as err:
+        except json.JSONDecodeError as err:  # pragma: no cover
             logger.debug('JSONField fails to get python value by error: %s',
                          err)
         return None
@@ -110,6 +114,7 @@ class UploadCfg(peewee.Model):
     image_url_querystr = peewee.CharField(max_length=255, null=False)
     thumbnail_url_querystr = peewee.CharField(max_length=255)
     delete_url_querystr = peewee.CharField(max_length=255)
+    querystr_pattern = re.compile(r'(?P<content_type>\S+):(?P<querystr>[\S]+)')
 
     class Meta:
         from . import db_proxy
@@ -141,12 +146,28 @@ class UploadCfg(peewee.Model):
         await adapter.send(url)
 
     def _query_response(self, response_body, content_type, querystr):
+        error_msg = ('response_body {}'.format(reprlib.repr(response_body)) +
+                     ' is not able to decode as ')
         if content_type == 'json':
-            raise NotImplementedError()
+
+            try:
+                resource = json.loads(response_body)
+            except json.JSONDecodeError as err:
+                raise ValueError(error_msg + 'json data.')
+
+            return query_json(resource, querystr)
+
         elif content_type == 'xml':
-            raise NotImplementedError()
+
+            try:
+                resource = lxml.etree.fromstring(response_body)
+            except lxml.etree.XMLSyntaxError as err:
+                raise ValueError(error_msg + 'xml data.')
+
+            return query_xml(resource, querystr)
+
         elif content_type == 'regex':
-            raise NotImplementedError()
+            return query_regex(response_body, querystr)
 
         raise ValueError(f'content_type {content_type!r} is not supported')
 
@@ -165,7 +186,6 @@ class UploadCfg(peewee.Model):
             contains image's url, thumbnail_url, delete_url.
 
         """
-        pattern = re.compile(r'(?P<content_type>\S+):(?P<querystr>[\S]+)')
 
         url_querystrs = dict(
             image_url=self.image_url_querystr,
@@ -177,7 +197,7 @@ class UploadCfg(peewee.Model):
             if not url_querystr:
                 rv[url_type] = ''
                 continue
-            match = pattern.match(url_querystr)
+            match = self.querystr_pattern.match(url_querystr)
             if match is None:
                 raise ValueError(
                     f'{url_type}_querystr {url_querystr} is invalid.')
