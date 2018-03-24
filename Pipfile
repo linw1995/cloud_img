@@ -17,6 +17,7 @@ pyjwt = "*"
 pyyaml = "*"
 werkzeug = "*"
 aiohttp-debugtoolbar = "*"
+lxml = "*"
 
 
 [dev-packages]

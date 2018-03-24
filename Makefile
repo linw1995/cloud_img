@@ -10,13 +10,13 @@ isort:
 flake:
 	pipenv run flake8 ./tests ./cloud_img
 
-test:
+test: flake isort
 	pipenv run py.test -q ./tests
 
-vtest:
+vtest: flake isort
 	pipenv run py.test -s -v ./tests
 
-cov:
+cov: flake isort
 	@pipenv run py.test --cov=cloud_img
 	@echo "building coverage html, view at './htmlcov/index.html'"
 	@pipenv run coverage html

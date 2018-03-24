@@ -5,6 +5,7 @@ import re
 
 import yaml
 from aiohttp_security import AbstractAuthorizationPolicy
+from lxml import etree
 
 from .constants import MODE
 
@@ -112,25 +113,88 @@ class AuthorizationPolicy(AbstractAuthorizationPolicy):
             return user_id
 
 
-def parse_xpath(path, resoure, getter):
-    """
-    parse xpath to load the value through the path.
+KEY_INDEX_PATTERN = re.compile(r'((?P<key>[^\s\.\[\]]+)'
+                               r'((?P<left>\[)(?P<index>\d+)(?(left)\]))?)+?')
 
-    1. unescape the xpath.
-    2. use regex to parse it.
-    3. load the resource.
 
-    + TODO: unescape the xpath
-    + TODO: exception handler
-    + TODO: unit test required
+def query_json(resource, path):
     """
-    arr_index = re.compile(r'((?P<arr>[^\s\.\[\]]+)'
-                           r'((?P<left>\[)(?P<index>\d+)(?(left)\]))?)+?')
-    for match in arr_index.findall(path):
-        group = match.groupdict()
-        key = group['key']
-        resoure = getter(resoure, key)
-        if 'index' in group:
-            index = int(group['index'])
-            resoure = getter(resoure, index)
-    return resoure
+    parse query_path to load the value through the path from json data.
+
+    TODO: unescape the path
+    """
+    error_msg = f'query json path {path!r} is invalid.'
+    try:
+        for match in KEY_INDEX_PATTERN.finditer(path):
+            group = match.groupdict()
+            key = group['key']
+            assert isinstance(resource, dict)
+            resource = resource[key]
+            if group['index']:
+                index = int(group['index'])
+                assert isinstance(resource, list)
+                assert index >= 1, ' the index should start at 1.'
+                assert index < len(resource) + 1, ' index out of range.'
+                resource = resource[index - 1]
+
+        rv_type = type(resource)
+        assert issubclass(rv_type, str), \
+            f'result must be <class \'str\'> not {rv_type}'
+        return resource
+    except AssertionError as err:
+        raise ValueError(f'{error_msg}{err}')
+    except KeyError as key:
+        raise ValueError(f'{error_msg} key {key} no exists')
+
+
+def query_xml(resource, path):
+    """
+    parse query_path to load the value through the path from xml data.
+
+    TODO: unescape the path
+    """
+    error_msg = f'query xml path {path!r} is invalid.'
+    try:
+        for match in KEY_INDEX_PATTERN.finditer(path):
+            group = match.groupdict()
+            key = group['key']
+            if isinstance(resource, etree._Element):
+                if resource.tag != key:
+                    raise KeyError(key)
+                assert group['index'] is None
+                resource = resource.getchildren()
+            elif isinstance(resource, list):
+                resource = [elem for elem in resource if elem.tag == key]
+                if len(resource) == 0:
+                    raise KeyError(key)
+                if group['index']:
+                    index = int(group['index'])
+                    assert index >= 1, ' the index should start at 1.'
+                    assert index < len(resource) + 1, ' index out of range.'
+                    resource = resource[index - 1]
+                else:
+                    resource = resource[0]
+            else:
+                raise AssertionError(' not supposed to happen.')
+        assert len(resource) == 0, ' it must be the deepest element.'
+        return resource.text
+    except AssertionError as err:
+        raise ValueError(f'{error_msg}{err}')
+    except KeyError as key:
+        raise ValueError(f'{error_msg} key {key} no exists')
+
+
+def query_regex(resource, raw_pattern):
+    """
+    use regex to load the value from raw data.
+    """
+    error_msg = f'query regex pattern {raw_pattern!r} is invalid.'
+    try:
+        pattern = re.compile(raw_pattern)
+        match = pattern.search(resource)
+        assert match is not None, ' pattern should match something.'
+        return match.group(1)
+    except AssertionError as err:
+        raise ValueError(f'{error_msg}{err}')
+    except re.error:
+        raise ValueError(f'{error_msg}')
