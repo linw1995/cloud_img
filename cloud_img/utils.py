@@ -69,7 +69,7 @@ def log_setup(app):
         logger.removeHandler(handler)
 
     logger.addHandler(file_handler)
-    if mode != MODE.TEST:
+    if mode != MODE.TEST:  # pragma: no cover
         logger.addHandler(std_handler)
 
     logger.info('logging handlers %r', logger.handlers)
