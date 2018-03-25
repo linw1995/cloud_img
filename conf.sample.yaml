@@ -3,12 +3,12 @@ global:
   # python module `secrets.token_urlsafe()`
   JWT_KEY: ZSCmULXCSvFBZp9MGq7iHIqBS017fpk7nFRWsbUXo0Y
 # environments
-production:
+production: &default
   db:
     mysql:
       host: localhost
       port: 3306
-      db: timelog
+      db: cloud_img
       user: root
       password: admin
       minsize: 10
