@@ -11,11 +11,11 @@ def test_query_fail():
     upload_cfg = UploadCfg()
 
     with pytest.raises(ValueError):
-        upload_cfg.image_url_querystr = 'noknown:abcdef'
+        upload_cfg.image_url_querystr = '$noknown:abcdef$'
         upload_cfg.query_response('')
 
     with pytest.raises(ValueError):
-        upload_cfg.image_url_querystr = 'noknown'
+        upload_cfg.image_url_querystr = '$noknown$'
         upload_cfg.query_response('')
 
 
@@ -23,10 +23,10 @@ def test_query_json_response():
     resource = {
         'data': {
             'urls': [
-                'https://www.python.org/', 'https://docs.python.org/', {
-                    'url': 'https://github.com/'
-                }
-            ]
+                'https://www.python.org/',
+                'https://docs.python.org/',
+            ],
+            'id': 12,
         }
     }
 
@@ -34,11 +34,13 @@ def test_query_json_response():
 
     upload_cfg = UploadCfg()
 
-    upload_cfg.image_url_querystr = 'json:data.urls[1]'
-
+    upload_cfg.image_url_querystr = '$json:data.urls[1]$'
     rv = upload_cfg.query_response(response_body)
-
     assert rv['image_url'] == resource['data']['urls'][0]
+
+    upload_cfg.image_url_querystr = 'http://hostname.com/$json:data.id$.png'
+    rv = upload_cfg.query_response(response_body)
+    assert rv['image_url'] == 'http://hostname.com/12.png'
 
     with pytest.raises(ValueError):
         cutted_response_body = response_body[:-2]
@@ -51,18 +53,23 @@ def test_query_xml_response():
     url1.text = 'https://www.python.org/'
     url2 = etree.Element('urls')
     url2.text = 'https://docs.python.org/'
+    id1 = etree.Element('id')
+    id1.text = '12'
     resource.append(url1)
     resource.append(url2)
+    resource.append(id1)
 
     response_body = etree.tostring(resource)
 
     upload_cfg = UploadCfg()
 
-    upload_cfg.image_url_querystr = 'xml:data.urls[1]'
-
+    upload_cfg.image_url_querystr = '$xml:data.urls[1]$'
     rv = upload_cfg.query_response(response_body)
-
     assert rv['image_url'] == url1.text
+
+    upload_cfg.image_url_querystr = 'http://hostname.com/$xml:data.id$.png'
+    rv = upload_cfg.query_response(response_body)
+    assert rv['image_url'] == 'http://hostname.com/12.png'
 
     with pytest.raises(ValueError):
         cutted_response_body = response_body[:-2]
@@ -71,15 +78,18 @@ def test_query_xml_response():
 
 def test_query_regex_response():
     response_body = "url1=https://www.python.org/" \
-        " url2=https://docs.python.org/"
+        " url2=https://docs.python.org/" \
+        " id=12"
 
     upload_cfg = UploadCfg()
 
-    upload_cfg.image_url_querystr = r'regex:url1=(\S+) '
-
+    upload_cfg.image_url_querystr = r'$regex:url1=(\S+) $'
     rv = upload_cfg.query_response(response_body)
-
     assert rv['image_url'] == 'https://www.python.org/'
+
+    upload_cfg.image_url_querystr = r'http://hostname.com/$regex:id=(\d+)$.png'
+    rv = upload_cfg.query_response(response_body)
+    assert rv['image_url'] == 'http://hostname.com/12.png'
 
     with pytest.raises(ValueError):
         cutted_response_body = response_body[2:-2]

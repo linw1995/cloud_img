@@ -42,14 +42,20 @@ def test_query_xml():
     url1.text = 'https://www.python.org/'
     url2 = etree.Element('urls')
     url2.text = 'https://docs.python.org/'
+    id1 = etree.Element('id')
+    id1.text = '12'
     resource.append(url1)
     resource.append(url2)
+    resource.append(id1)
 
     rv = query_xml(resource, 'data.urls[1]')
     assert rv == url1.text
 
     rv = query_xml(resource, 'data.urls[2]')
     assert rv == url2.text
+
+    rv = query_xml(resource, 'data.id')
+    assert rv == id1.text
 
     with pytest.raises(ValueError):
         query_xml(resource, 'data.urls[bor]')

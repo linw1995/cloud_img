@@ -114,7 +114,10 @@ class UploadCfg(peewee.Model):
     image_url_querystr = peewee.CharField(max_length=255, null=False)
     thumbnail_url_querystr = peewee.CharField(max_length=255)
     delete_url_querystr = peewee.CharField(max_length=255)
-    querystr_pattern = re.compile(r'(?P<content_type>\S+):(?P<querystr>[\S]+)')
+
+    QUERYSTR_PATTERN = re.compile(r'(?P<border>\$)'
+                                  r'(?P<content_type>\S+?):(?P<querystr>.+)'
+                                  r'(?(border)\$)')
 
     class Meta:
         from . import db_proxy
@@ -197,14 +200,19 @@ class UploadCfg(peewee.Model):
             if not url_querystr:
                 rv[url_type] = ''
                 continue
-            match = self.querystr_pattern.match(url_querystr)
+            match = self.QUERYSTR_PATTERN.search(url_querystr)
             if match is None:
                 raise ValueError(
-                    f'{url_type}_querystr {url_querystr} is invalid.')
+                    f'{url_type}_querystr {url_querystr!r} is invalid.')
 
             group = match.groupdict()
-            url = self._query_response(response_body, **group)
-            rv[url_type] = url
+            content_type = group.get('content_type')
+            querystr = group.get('querystr')
+            query_rv = self._query_response(response_body, content_type,
+                                            querystr)
+            prefix = url_querystr[:match.start()]
+            suffix = url_querystr[match.end():]
+            rv[url_type] = f'{prefix}{query_rv}{suffix}'
 
         return rv
 

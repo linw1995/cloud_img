@@ -138,8 +138,8 @@ def query_json(resource, path):
                 resource = resource[index - 1]
 
         rv_type = type(resource)
-        assert issubclass(rv_type, str), \
-            f'result must be <class \'str\'> not {rv_type}'
+        assert issubclass(rv_type, (str, int, float)), \
+            f'result type must be str, int or float, but get {rv_type}'
         return resource
     except AssertionError as err:
         raise ValueError(f'{error_msg}{err}')
