@@ -5,6 +5,7 @@ import re
 import reprlib
 from datetime import datetime
 
+import aiohttp
 import lxml.etree
 import peewee
 import yarl
@@ -12,7 +13,7 @@ import yarl
 from ..utils import query_json, query_regex, query_xml
 
 
-__all__ = ('UploadCfg', 'ImageWithUploadCfg', 'Adapter')
+__all__ = ('UploadCfg', 'ImageWithUploadCfg', 'Adapter', 'Client')
 
 logger = logging.getLogger(__file__)
 
@@ -24,7 +25,6 @@ class JSONField(peewee.TextField):
         except ValueError as err:  # pragma: no cover
             logger.error('json.dumps fails to encode the value by error: %s',
                          err)
-        return None
 
     def python_value(self, value):
         try:
@@ -32,10 +32,9 @@ class JSONField(peewee.TextField):
         except json.JSONDecodeError as err:  # pragma: no cover
             logger.debug('JSONField fails to get python value by error: %s',
                          err)
-        return None
 
 
-class Adapter(abc.ABCMeta):
+class Adapter(abc.ABC):
     """
     adapting the different clients to perform upload and parse the response.
     """
@@ -67,6 +66,17 @@ class Adapter(abc.ABCMeta):
         """
 
 
+class Client(Adapter):
+    def __init__(self):
+        self.session = aiohttp.ClientSession()
+
+    async def send(self, method, url, headers=None, data=None):
+        async with self.session.request(
+                method, url, headers=headers, data=data) as resp:
+            response_body = await resp.text()
+        return response_body
+
+
 class UploadCfg(peewee.Model):
     """
     Upload config for different websites.
@@ -81,6 +91,15 @@ class UploadCfg(peewee.Model):
         request url for upload.
     request_method : srt
         request method
+    values : Mapping
+        user custom value mapping
+
+        if set authtoken: 'abcdef',
+        it will replace $authtoken$ with 'abcdef'
+        in request_* field below.
+
+        default:
+            input: imagedata
     request_querystring : Mapping
         url query string
     request_headers : Mapping
@@ -102,13 +121,10 @@ class UploadCfg(peewee.Model):
     request_url = peewee.TextField(null=False)
     request_method = peewee.CharField(
         max_length=10, default='post', null=False)
-    # TODO: using yarl.URL._QUERY_QUOTER to validate the property
-    request_querystring = JSONField()
-    # TODO: using aio-libs' multidict.CIMultiDict to validate the property
-    request_headers = JSONField()
-    # TODO: using aiohttp.FormData to validate the property
-    request_formdata = JSONField()
-    # TODO: request_body is hard to implement
+    values = JSONField(default={})
+    request_querystring = JSONField(default={})
+    request_headers = JSONField(default={})
+    request_formdata = JSONField(default={})
 
     # query the image's info from the response
     image_url_querystr = peewee.CharField(max_length=255, null=False)
@@ -118,6 +134,8 @@ class UploadCfg(peewee.Model):
     QUERYSTR_PATTERN = re.compile(r'(?P<border>\$)'
                                   r'(?P<content_type>\S+?):(?P<querystr>.+)'
                                   r'(?(border)\$)')
+    VALUE_PATTERN = re.compile(r'(?P<border>\$)(?P<key>.+?)(?(border)\$)')
+    IMAGE_KEY = 'input'
 
     class Meta:
         from . import db_proxy
@@ -139,14 +157,79 @@ class UploadCfg(peewee.Model):
         if not isinstance(adapter, Adapter):
             raise ValueError(f"{adapter:!r} should be Adopter's instance.")
 
-        # TODO: format image binary, some func and etc,
-        # into querystr, or formdata, or headers
+        querystring = self.request_querystring.copy()
+        headers = self.request_headers.copy()
+        formdata = self.request_formdata.copy()
+
+        if querystring:
+            for name, template in querystring.items():
+                rvs = []
+                pre_end = 0
+                for match in self.VALUE_PATTERN.finditer(template):
+                    key = match.groupdict().get('key')
+                    assert key != self.IMAGE_KEY, \
+                        "cannot set image data into url query string"
+                    rv = self.values.get(key)
+                    prefix = template[pre_end:match.start()]
+                    rv = f'{prefix}{rv}'
+                    rvs.append(rv)
+                    pre_end = match.end()
+                else:
+                    rvs.append(template[pre_end:])
+                    querystring[name] = ''.join(rvs)
+
+        if headers:
+            for name, template in headers.items():
+                rvs = []
+                pre_end = 0
+                for match in self.VALUE_PATTERN.finditer(template):
+                    key = match.groupdict().get('key')
+                    assert key != self.IMAGE_KEY, \
+                        "cannot set image data into headers"
+                    rv = self.values.get(key)
+                    prefix = template[pre_end:match.start()]
+                    rv = f'{prefix}{rv}'
+                    rvs.append(rv)
+                    pre_end = match.end()
+                else:
+                    rvs.append(template[pre_end:])
+                    headers[name] = ''.join(rvs)
+
+        if formdata:
+            for name, template in formdata.items():
+                rvs = []
+                pre_end = 0
+                for match in self.VALUE_PATTERN.finditer(template):
+                    key = match.groupdict().get('key')
+                    if key == self.IMAGE_KEY:
+                        endpos = match.endpos
+                        assert match.start() == 0 and match.end() == endpos, \
+                            "image data can not concat with str"
+                        formdata[name] = data
+                        break
+                    else:
+                        rv = self.values.get(key)
+                        prefix = template[pre_end:match.start()]
+                        rv = f'{prefix}{rv}'
+                        rvs.append(rv)
+                        pre_end = match.end()
+                else:
+                    rvs.append(template[pre_end:])
+                    formdata[name] = ''.join(rvs)
 
         url = yarl.URL(self.request_url)
-        if self.request_querystring:
-            url = url.with_query(self.request_querystring)
+        if querystring:
+            url = url.with_query(querystring)
 
-        await adapter.send(url)
+        response_body = await adapter.send(
+            method=self.request_method,
+            url=url,
+            headers=headers,
+            data=formdata)
+
+        rv = self.query_response(response_body)
+
+        return rv, response_body
 
     def _query_response(self, response_body, content_type, querystr):
         error_msg = ('response_body {}'.format(reprlib.repr(response_body)) +
