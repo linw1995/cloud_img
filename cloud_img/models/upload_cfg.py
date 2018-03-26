@@ -154,68 +154,40 @@ class UploadCfg(peewee.Model):
             image binary data.
 
         """
-        if not isinstance(adapter, Adapter):
+        if not isinstance(adapter, Adapter):  # pragma: no cover
             raise ValueError(f"{adapter:!r} should be Adopter's instance.")
 
         querystring = self.request_querystring.copy()
         headers = self.request_headers.copy()
         formdata = self.request_formdata.copy()
 
+        def make_repl(assert_msg):
+            def repl(match):
+                key = match.groupdict().get('key')
+                assert key != self.IMAGE_KEY, assert_msg
+                rv = self.values.get(key)
+                return str(rv) if rv is not None else match.group()
+
+            return repl
+
         if querystring:
+            repl = make_repl('cannot set image data into url query string')
             for name, template in querystring.items():
-                rvs = []
-                pre_end = 0
-                for match in self.VALUE_PATTERN.finditer(template):
-                    key = match.groupdict().get('key')
-                    assert key != self.IMAGE_KEY, \
-                        "cannot set image data into url query string"
-                    rv = self.values.get(key)
-                    prefix = template[pre_end:match.start()]
-                    rv = f'{prefix}{rv}'
-                    rvs.append(rv)
-                    pre_end = match.end()
-                else:
-                    rvs.append(template[pre_end:])
-                    querystring[name] = ''.join(rvs)
+                querystring[name], _ = self.VALUE_PATTERN.subn(repl, template)
 
         if headers:
+            repl = make_repl('cannot set image data into request headers')
             for name, template in headers.items():
-                rvs = []
-                pre_end = 0
-                for match in self.VALUE_PATTERN.finditer(template):
-                    key = match.groupdict().get('key')
-                    assert key != self.IMAGE_KEY, \
-                        "cannot set image data into headers"
-                    rv = self.values.get(key)
-                    prefix = template[pre_end:match.start()]
-                    rv = f'{prefix}{rv}'
-                    rvs.append(rv)
-                    pre_end = match.end()
-                else:
-                    rvs.append(template[pre_end:])
-                    headers[name] = ''.join(rvs)
+                headers[name], _ = self.VALUE_PATTERN.subn(repl, template)
 
         if formdata:
+            repl = make_repl('cannot concat image bytes with str')
             for name, template in formdata.items():
-                rvs = []
-                pre_end = 0
-                for match in self.VALUE_PATTERN.finditer(template):
-                    key = match.groupdict().get('key')
-                    if key == self.IMAGE_KEY:
-                        endpos = match.endpos
-                        assert match.start() == 0 and match.end() == endpos, \
-                            "image data can not concat with str"
-                        formdata[name] = data
-                        break
-                    else:
-                        rv = self.values.get(key)
-                        prefix = template[pre_end:match.start()]
-                        rv = f'{prefix}{rv}'
-                        rvs.append(rv)
-                        pre_end = match.end()
-                else:
-                    rvs.append(template[pre_end:])
-                    formdata[name] = ''.join(rvs)
+                match = self.VALUE_PATTERN.match(template)
+                if match and match.groupdict().get('key') == self.IMAGE_KEY:
+                    formdata[name] = data
+                    continue
+                formdata[name], _ = self.VALUE_PATTERN.subn(repl, template)
 
         url = yarl.URL(self.request_url)
         if querystring:
