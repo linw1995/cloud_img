@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta
 
 import freezegun
+from aiohttp_security.api import IDENTITY_KEY
 from pytest import fixture
 
 from cloud_img import create_app
 from cloud_img.constants import MODE
-from cloud_img.models import create_db, create_db_manager
+from cloud_img.models import User, create_db, create_db_manager
 
 
 @fixture
@@ -43,3 +44,19 @@ async def db_manager(loop, app, db):
 def app():
     app = create_app(mode=MODE.TEST)
     return app
+
+
+@fixture
+async def user(db_manager, faker):
+    username = faker.name()
+    password = faker.password()
+    user = await db_manager.create(User, username=username, password=password)
+    return user
+
+
+@fixture
+async def logined_client(aiohttp_client, app, user):
+    client = await aiohttp_client(app)
+    cookie_name = app[IDENTITY_KEY]._cookie_name
+    client.session.cookie_jar.update_cookies({cookie_name: user.identity})
+    return client
