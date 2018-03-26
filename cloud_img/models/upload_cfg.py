@@ -10,7 +10,7 @@ import lxml.etree
 import peewee
 import yarl
 
-from ..utils import query_json, query_regex, query_xml
+from ..utils import datetime2unix, query_json, query_regex, query_xml
 
 
 __all__ = ('UploadCfg', 'ImageWithUploadCfg', 'Adapter', 'Client')
@@ -116,20 +116,21 @@ class UploadCfg(peewee.Model):
     """
     from .user import User
     name = peewee.CharField(max_length=255, null=False)
-    user = peewee.ForeignKeyField(User, related_name='servers')
+    user = peewee.ForeignKeyField(User, related_name='upload_cfgs')
 
-    request_url = peewee.TextField(null=False)
+    request_url = peewee.TextField(null=False, default='')
     request_method = peewee.CharField(
         max_length=10, default='post', null=False)
-    values = JSONField(default={})
-    request_querystring = JSONField(default={})
-    request_headers = JSONField(default={})
-    request_formdata = JSONField(default={})
+    values = JSONField(default=dict)
+    request_querystring = JSONField(default=dict)
+    request_headers = JSONField(default=dict)
+    request_formdata = JSONField(default=dict)
 
     # query the image's info from the response
-    image_url_querystr = peewee.CharField(max_length=255, null=False)
-    thumbnail_url_querystr = peewee.CharField(max_length=255)
-    delete_url_querystr = peewee.CharField(max_length=255)
+    image_url_querystr = peewee.CharField(
+        max_length=255, null=False, default='')
+    thumbnail_url_querystr = peewee.CharField(max_length=255, default='')
+    delete_url_querystr = peewee.CharField(max_length=255, default='')
 
     QUERYSTR_PATTERN = re.compile(r'(?P<border>\$)'
                                   r'(?P<content_type>\S+?):(?P<querystr>.+)'
@@ -277,9 +278,9 @@ class ImageWithUploadCfg(peewee.Model):
     upload_cfg = peewee.ForeignKeyField(UploadCfg, related_name='images')
     image = peewee.ForeignKeyField(Image, related_name='upload_cfgs')
 
-    url = peewee.TextField(null=False)
-    thumbnail_url = peewee.TextField()
-    delete_url = peewee.TextField()
+    image_url = peewee.TextField(null=False, default='')
+    thumbnail_url = peewee.TextField(default='')
+    delete_url = peewee.TextField(default='')
 
     created_at = peewee.DateTimeField(default=datetime.utcnow)
     seen_at = peewee.DateTimeField(default=datetime.utcnow)
@@ -289,3 +290,14 @@ class ImageWithUploadCfg(peewee.Model):
         database = db_proxy
         db_table = 'image_with_upload_cfg'
         indexes = ((('upload_cfg', 'image'), True), )
+
+    def toJSON(self):
+        return {
+            'image_id': self.image_id,
+            'upload_cfg_id': self.upload_cfg_id,
+            'image_url': self.image_url,
+            'thumbnail_url': self.thumbnail_url,
+            'delete_url': self.delete_url,
+            'created_at': datetime2unix(self.created_at),
+            'seen_at': datetime2unix(self.seen_at),
+        }

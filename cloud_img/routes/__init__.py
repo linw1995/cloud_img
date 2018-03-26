@@ -1,6 +1,7 @@
 from aiohttp.web import Application
 
 from .auth import login, signup, logout
+from .image import ImageApi
 
 
 def setup(app: Application):
@@ -16,3 +17,5 @@ def setup(app: Application):
     app.router.add_post(r'/login', login)
     app.router.add_post(r'/signup', signup)
     app.router.add_post(r'/logout', logout)
+
+    app.router.add_get(r'/image', ImageApi.get)

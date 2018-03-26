@@ -1,10 +1,13 @@
+import functools
 import logging
 import logging.handlers
 import pathlib
 import re
+import time
 
 import yaml
-from aiohttp_security import AbstractAuthorizationPolicy
+from aiohttp import web
+from aiohttp_security import AbstractAuthorizationPolicy, authorized_userid
 from lxml import etree
 
 from .constants import MODE
@@ -113,6 +116,36 @@ class AuthorizationPolicy(AbstractAuthorizationPolicy):
             return user_id
 
 
+def login_required(fn):
+    """Decorator that restrict access only for authorized users.
+
+    User is considered authorized if authorized_userid
+    returns some value.
+
+    import from aiohttp_security.api
+    """
+
+    @functools.wraps(fn)
+    async def wrapped(*args, **kwargs):
+        request = args[-1]
+        if not isinstance(request, web.BaseRequest):
+            msg = ("Incorrect decorator usage. "
+                   "Expecting `def handler(request)` "
+                   "or `def handler(self, request)`.")
+            raise RuntimeError(msg)
+
+        userid = await authorized_userid(request)
+        if userid is None:
+            raise web.HTTPUnauthorized
+
+        request.user_id = userid
+
+        ret = await fn(*args, **kwargs)
+        return ret
+
+    return wrapped
+
+
 KEY_INDEX_PATTERN = re.compile(r'((?P<key>[^\s\.\[\]]+)'
                                r'((?P<left>\[)(?P<index>\d+)(?(left)\]))?)+?')
 
@@ -198,3 +231,8 @@ def query_regex(resource, raw_pattern):
         raise ValueError(f'{error_msg}{err}')
     except re.error:
         raise ValueError(f'{error_msg}')
+
+
+def datetime2unix(dt):
+    tt = dt.timetuple()
+    return time.mktime(tt)
