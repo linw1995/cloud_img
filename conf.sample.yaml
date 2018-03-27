@@ -10,7 +10,7 @@ production: &default
       port: 3306
       db: cloud_img
       user: root
-      password: admin
+      password:
       minsize: 10
       maxsize: 100
 
@@ -24,6 +24,6 @@ test:
       port: 3306
       db: cloud_img_test
       user: root
-      password: admin
+      password:
       minsize: 10
       maxsize: 100

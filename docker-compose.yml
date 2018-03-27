@@ -1,7 +1,7 @@
 test_db:
     image: mysql
     environment:
-        - MYSQL_ROOT_PASSWORD=admin
+        - MYSQL_ALLOW_EMPTY_PASSWORD=yes
         - MYSQL_ROOT_HOST=%
         - MYSQL_DATABASE=cloud_img_test
     ports:

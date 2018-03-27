@@ -1,0 +1,24 @@
+language: python
+
+os:
+  - linux
+
+python:
+  - "3.6-dev"
+
+install:
+  - make init
+  - pip install codecov
+
+services:
+  - mysql
+
+before_install:
+  - mysql -e 'CREATE DATABASE IF NOT EXISTS cloud_img_test;'
+  - cp conf.sample.yaml conf.yaml
+
+script:
+  - make cov
+
+after_success:
+  - codecov
