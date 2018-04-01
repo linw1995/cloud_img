@@ -55,6 +55,14 @@ async def user(db_manager, faker):
 
 
 @fixture
+async def user_2(db_manager, faker):
+    username = faker.name()
+    password = faker.password()
+    user = await db_manager.create(User, username=username, password=password)
+    return user
+
+
+@fixture
 async def logined_client(aiohttp_client, app, user):
     client = await aiohttp_client(app)
     cookie_name = app[IDENTITY_KEY]._cookie_name
