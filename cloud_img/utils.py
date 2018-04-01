@@ -116,7 +116,7 @@ class AuthorizationPolicy(AbstractAuthorizationPolicy):
             return user_id
 
 
-def login_required(fn):
+def login_required(fn):  # pragma: no cover
     """Decorator that restrict access only for authorized users.
 
     User is considered authorized if authorized_userid
