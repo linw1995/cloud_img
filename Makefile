@@ -1,7 +1,7 @@
 init:
 	python -m pip install -U pip
 	pip install pipenv
-	pipenv install --dev
+	pipenv install --dev --skip-lock
 	pipenv run pip install -e .
 
 isort:
