@@ -207,3 +207,44 @@ async def test_upload_with_values_in_headers(Client):
     assert headers['arg'] == 'arg=abcdef'
     assert 'args' in headers
     assert headers['args'] == 'arg1=1;arg2=2'
+
+
+async def test_UploadCfg_count(db_manager, user, user_2):
+    assert await UploadCfg.count(db_manager=db_manager) == 0
+    assert await UploadCfg.count(user_id=user.id, db_manager=db_manager) == 0
+    assert await UploadCfg.count(user_id=user_2.id, db_manager=db_manager) == 0
+
+    await db_manager.create(UploadCfg, user=user)
+
+    assert await UploadCfg.count(db_manager=db_manager) == 1
+    assert await UploadCfg.count(user_id=user.id, db_manager=db_manager) == 1
+    assert await UploadCfg.count(user_id=user_2.id, db_manager=db_manager) == 0
+
+
+async def test_UploadCfg_paginate(db_manager, user, user_2):
+    for i in range(10):
+        await db_manager.create(UploadCfg, user=user)
+    for i in range(10):
+        await db_manager.create(UploadCfg, user=user_2)
+
+    images = list(await UploadCfg.paginate(db_manager=db_manager))
+    assert isinstance(images[0], UploadCfg)
+    assert len(images) == 15
+    assert images[0].id == 20
+
+    images = list(await UploadCfg.paginate(db_manager=db_manager, page_no=2))
+    assert isinstance(images[0], UploadCfg)
+    assert len(images) == 5
+    assert images[0].id == 5
+
+    images = list(await UploadCfg.paginate(
+        db_manager=db_manager, page_no=2, page_size=10))
+    assert isinstance(images[0], UploadCfg)
+    assert len(images) == 10
+    assert images[0].id == 10
+
+    images = list(await UploadCfg.paginate(
+        user_id=user.id, db_manager=db_manager))
+    assert isinstance(images[0], UploadCfg)
+    assert len(images) == 10
+    assert images[0].id == 10

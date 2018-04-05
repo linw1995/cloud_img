@@ -115,7 +115,7 @@ class UploadCfg(peewee.Model):
 
     """
     from .user import User
-    name = peewee.CharField(max_length=255, null=False)
+    name = peewee.CharField(max_length=255, default='', null=False)
     user = peewee.ForeignKeyField(User, related_name='upload_cfgs')
 
     request_url = peewee.TextField(null=False, default='')
@@ -131,6 +131,10 @@ class UploadCfg(peewee.Model):
         max_length=255, null=False, default='')
     thumbnail_url_querystr = peewee.CharField(max_length=255, default='')
     delete_url_querystr = peewee.CharField(max_length=255, default='')
+
+    created_at = peewee.DateTimeField(default=datetime.utcnow)
+    seen_at = peewee.DateTimeField(default=datetime.utcnow)
+    description = peewee.CharField(max_length=255, default='')
 
     QUERYSTR_PATTERN = re.compile(r'(?P<border>\$)'
                                   r'(?P<content_type>\S+?):(?P<querystr>.+)'
@@ -271,6 +275,47 @@ class UploadCfg(peewee.Model):
             rv[url_type] = f'{prefix}{query_rv}{suffix}'
 
         return rv
+
+    def toJSON(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'name': self.name,
+            'created_at': datetime2unix(self.created_at),
+            'seen_at': datetime2unix(self.seen_at),
+            'description': self.description,
+            'request_url': self.request_url,
+            'request_method': self.request_method,
+            'values': self.values,
+            'request_querystring': self.request_querystring,
+            'request_headers': self.request_headers,
+            'request_formdata': self.request_formdata,
+            'image_url_querystr': self.image_url_querystr,
+            'thumbnail_url_querystr': self.thumbnail_url_querystr,
+            'delete_url_querystr': self.delete_url_querystr,
+        }
+
+    @classmethod
+    async def count(cls, user_id=None, *, db_manager):
+        sql = cls.select()
+        if user_id is not None:
+            sql = sql.where(cls.user_id == user_id)
+        return await db_manager.count(sql)
+
+    @classmethod
+    async def paginate(cls,
+                       user_id=None,
+                       page_no=1,
+                       page_size=15,
+                       *,
+                       db_manager):
+        sql = cls.select()
+        if user_id is not None:
+            sql = sql.where(cls.user_id == user_id)
+        sql = sql \
+            .order_by(cls.id.desc()) \
+            .paginate(page_no, page_size)
+        return await db_manager.execute(sql)
 
 
 class ImageWithUploadCfg(peewee.Model):

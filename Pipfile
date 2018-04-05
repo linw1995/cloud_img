@@ -18,6 +18,7 @@ pyyaml = "*"
 werkzeug = "*"
 aiohttp-debugtoolbar = "*"
 lxml = "*"
+aiojobs = "*"
 
 
 [dev-packages]

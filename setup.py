@@ -43,7 +43,8 @@ setup(
     name='cloud_img',
     version=version,
     description='managing the web image',
-    long_description=read('README.rst'),
+    long_description=read('README.md'),
+    long_description_content_type='text/markdown',
     classifiers=[
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Intended Audience :: Developers',
