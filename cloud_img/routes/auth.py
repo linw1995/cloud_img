@@ -2,11 +2,11 @@ import logging
 
 import peewee
 from aiohttp import web
-# TODO: reimplement `login_required` decorator
-from aiohttp_security.api import forget, login_required, remember
+from aiohttp_security.api import forget, remember
 from jsonschema import ValidationError, validate
 
 from ..models.user import User
+from ..utils import login_required
 
 
 logger = logging.getLogger(__name__)
@@ -60,15 +60,14 @@ async def login(request, *args, **kwargs):
     password = reqBody['password']
     try:
         user = await db_manager.get(User, username=username)
-    except User.DoesNotExist as err:
-        logger.debug(err)
-    else:
         valid = user.validate_password(password)
         if valid:
             logger.debug('%r login success', user)
             response = web.json_response({'message': 'login success'})
             await remember(request, response, user.identity)
             return response
+    except User.DoesNotExist:
+        logger.debug('user(username=%r) not exists', username)
     logger.debug('User(username=%r) login failure', username)
     return web.json_response(
         {
@@ -103,6 +102,7 @@ async def signup(request):
 
 @login_required
 async def logout(request):
+    logger.debug('User(id=%d) logout', request.user_id)
     response = web.json_response({'message': 'logout success'})
     await forget(request, response)
     return response

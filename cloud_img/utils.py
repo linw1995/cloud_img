@@ -55,25 +55,21 @@ def log_setup(app):
     """
     mode = app['mode']
     formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    file_handler = logging.handlers.TimedRotatingFileHandler(
-        f'{mode}.log', when='h', encoding='utf8', backupCount=5, utc=True)
-    file_handler.setFormatter(formatter)
-
-    std_handler = logging.StreamHandler()
-    std_handler.setFormatter(formatter)
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        '%Y-%m-%dT%H:%M:%S%z')
 
     logger = logging.getLogger()
     logger.setLevel(logging.NOTSET)
 
-    # remove existing handler
-    for handler in logger.handlers:
-        handler.close()
-        logger.removeHandler(handler)
-
-    logger.addHandler(file_handler)
     if mode != MODE.TEST:  # pragma: no cover
+        std_handler = logging.StreamHandler()
+        std_handler.setFormatter(formatter)
+
+        file_handler = logging.handlers.TimedRotatingFileHandler(
+            f'{mode}.log', when='h', encoding='utf8', backupCount=5, utc=True)
+        file_handler.setFormatter(formatter)
+
+        logger.addHandler(file_handler)
         logger.addHandler(std_handler)
 
     logger.info('logging handlers %r', logger.handlers)

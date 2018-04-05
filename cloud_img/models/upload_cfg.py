@@ -15,7 +15,7 @@ from ..utils import datetime2unix, query_json, query_regex, query_xml
 
 __all__ = ('UploadCfg', 'ImageWithUploadCfg', 'Adapter', 'Client')
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 
 class JSONField(peewee.TextField):
