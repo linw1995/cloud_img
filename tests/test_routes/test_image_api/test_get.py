@@ -1,7 +1,7 @@
 from cloud_img.models import Image, ImageWithUploadCfg, UploadCfg
 
 
-async def test_get_image_pagination(db_manager, faker, logined_client, user):
+async def test_pagination(db_manager, faker, logined_client, user):
     resp = await logined_client.get('/image')
     assert resp.status == 200
     data = await resp.json()
@@ -41,8 +41,8 @@ async def test_get_image_pagination(db_manager, faker, logined_client, user):
     assert data['page_size'] == 10
 
 
-async def test_get_image_with_multi_sources(db_manager, faker, logined_client,
-                                            user):
+async def test_image_with_multi_sources(db_manager, faker, logined_client,
+                                        user):
     upload_cfg_a = await db_manager.create(UploadCfg, user=user, name='test_a')
     upload_cfg_b = await db_manager.create(UploadCfg, user=user, name='test_b')
     for i in range(3):
@@ -69,3 +69,30 @@ async def test_get_image_with_multi_sources(db_manager, faker, logined_client,
 
     assert thrid_img['id'] == 3
     assert len(thrid_img['sources']) == 1
+
+
+async def test_filter_by_upload_cfg_id(db_manager, faker, logined_client,
+                                       user):
+    upload_cfg_a = await db_manager.create(UploadCfg, user=user, name='test_a')
+    upload_cfg_b = await db_manager.create(UploadCfg, user=user, name='test_b')
+    for i in range(3):
+        image = await db_manager.create(Image, user=user)
+        if i % 2:
+            await db_manager.create(
+                ImageWithUploadCfg, upload_cfg=upload_cfg_a, image=image)
+        if i % 3:
+            await db_manager.create(
+                ImageWithUploadCfg, upload_cfg=upload_cfg_b, image=image)
+
+    resp = await logined_client.get(
+        '/image',
+        params={
+            'upload_cfg_id': upload_cfg_a.id,
+            'page_no': 1,
+            'page_size': 10
+        })
+    assert resp.status == 200
+    data = await resp.json()
+    assert data['total'] == 1
+    images = data['images']
+    assert images[0]['id'] == 2
