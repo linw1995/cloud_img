@@ -64,3 +64,40 @@ async def test_get_upload_cfgs(db_manager, user):
     upload_cfgs = list(await Image.get_upload_cfgs(
         image_id=3, db_manager=db_manager))
     assert len(upload_cfgs) == 1
+
+
+async def test_filter_by_uploadcfg(db_manager, user):
+    upload_cfg_a = await db_manager.create(UploadCfg, user=user, name='test_a')
+    upload_cfg_b = await db_manager.create(UploadCfg, user=user, name='test_b')
+    for i in range(4):
+        image = await db_manager.create(Image, user=user)
+        if i % 2:
+            await db_manager.create(
+                ImageWithUploadCfg, upload_cfg=upload_cfg_a, image=image)
+        if i % 3:
+            await db_manager.create(
+                ImageWithUploadCfg, upload_cfg=upload_cfg_b, image=image)
+
+    assert (await Image.count(user_id=user.id, db_manager=db_manager)) == 4
+
+    assert (await Image.count(
+        user_id=user.id, upload_cfg_id=upload_cfg_a.id,
+        db_manager=db_manager)) == 2
+
+    assert (await Image.count(
+        user_id=user.id, upload_cfg_id=upload_cfg_b.id,
+        db_manager=db_manager)) == 2
+
+    images = list(await Image.paginate(
+        user_id=user.id, upload_cfg_id=upload_cfg_a.id, db_manager=db_manager))
+    assert isinstance(images[0], Image)
+    assert len(images) == 2
+    assert images[0].id == 4
+    assert images[1].id == 2
+
+    images = list(await Image.paginate(
+        user_id=user.id, upload_cfg_id=upload_cfg_b.id, db_manager=db_manager))
+    assert isinstance(images[0], Image)
+    assert len(images) == 2
+    assert images[0].id == 3
+    assert images[1].id == 2

@@ -30,22 +30,31 @@ class Image(peewee.Model):
         }
 
     @classmethod
-    async def count(cls, user_id=None, *, db_manager):
+    async def count(cls, user_id=None, upload_cfg_id=None, *, db_manager):
+        from .upload_cfg import ImageWithUploadCfg
         sql = cls.select()
         if user_id is not None:
             sql = sql.where(cls.user_id == user_id)
+        if upload_cfg_id is not None:
+            sql = sql.join(ImageWithUploadCfg).where(
+                ImageWithUploadCfg.upload_cfg_id == upload_cfg_id)
         return await db_manager.count(sql)
 
     @classmethod
     async def paginate(cls,
                        user_id=None,
+                       upload_cfg_id=None,
                        page_no=1,
                        page_size=15,
                        *,
                        db_manager):
+        from .upload_cfg import ImageWithUploadCfg
         sql = cls.select()
         if user_id is not None:
             sql = sql.where(cls.user_id == user_id)
+        if upload_cfg_id is not None:
+            sql = sql.join(ImageWithUploadCfg).where(
+                ImageWithUploadCfg.upload_cfg_id == upload_cfg_id)
         sql = sql \
             .order_by(cls.id.desc()) \
             .paginate(page_no, page_size)
