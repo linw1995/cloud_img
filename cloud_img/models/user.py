@@ -5,7 +5,7 @@ import peewee
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..constants import GLOBAL, JWT_KEY_CONFIG, JWT_KEY_DEFAULT
-from ..utils import Config
+from ..utils import get_config
 
 
 __all__ = ('User', )
@@ -39,7 +39,7 @@ class User(peewee.Model):
         """user security identity"""
         # TODO: better way to import the config
         # config.get(JWT_KEY_CONFIG)
-        config = Config()
+        config = get_config()
         key = config.get(GLOBAL, {}).get(JWT_KEY_CONFIG, JWT_KEY_DEFAULT)
         payload = {'user_id': self.id}
         jwt_bytes = jwt.encode(payload=payload, key=key, algorithm='HS256')
@@ -53,7 +53,7 @@ class User(peewee.Model):
         return the `user_id` by the identity
         or 'None' if identity decode fail.
         """
-        config = Config()
+        config = get_config()
         key = config.get(GLOBAL, {}).get(JWT_KEY_CONFIG, JWT_KEY_DEFAULT)
         jwt_bytes = identity.encode('utf8')
         try:

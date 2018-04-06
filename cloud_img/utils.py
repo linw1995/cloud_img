@@ -10,40 +10,32 @@ from aiohttp import web
 from aiohttp_security import AbstractAuthorizationPolicy, authorized_userid
 from lxml import etree
 
-from .constants import MODE
+from .constants import GLOBAL, MODE
 
 
-__all__ = ('get_config', 'AuthorizationPolicy', 'config_setup', 'Config')
-_config = None
+__all__ = ('get_config', 'AuthorizationPolicy', 'config_setup')
+_config = []
+_mode = None
 
 
-def get_config(app):
+def get_config():
     """
     get different config depends on app's mode.
     """
-    mode = app['mode']
-    conf = app['config']
-    if mode is not None:  # pragma: no cover
-        conf = conf[mode]
+    global _config
+    assert _config is not None, "use config_setup(app) first."
+    conf = _config.copy()
+    if _mode is not None:  # pragma: no cover
+        conf = conf[_mode]
+    conf[GLOBAL] = _config[GLOBAL]
     return conf
 
 
-def Config():
-    """
-    use `Config()` for global config sharing.
-
-    TODO: make it immutable
-    """
-    global _config
-    assert _config is not None, "Cannot use uninitialized Config."
-    return _config
-
-
 def config_setup(app):
-    global _config
+    global _config, _mode
     confPath = pathlib.Path('.') / 'conf.yaml'
     _config = yaml.load(confPath.read_text('utf-8'))
-    app['config'] = _config
+    _mode = app['mode']
 
 
 def log_setup(app):

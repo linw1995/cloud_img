@@ -31,7 +31,7 @@ def create_db(app):
     """
     create database depends on the config.
     """
-    conf = get_config(app)['db']['mysql']
+    conf = get_config()['db']['mysql']
 
     logger.info('creating db with config: %r', conf)
 
