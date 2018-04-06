@@ -17,7 +17,7 @@ vtest: flake isort
 	pipenv run py.test -s -v ./tests
 
 cov: flake isort
-	@pipenv run py.test --cov=cloud_img
+	@pipenv run py.test --cov=cloud_img -v --timeout 10
 	@echo "building coverage html, view at './htmlcov/index.html'"
 	@pipenv run coverage html
 
@@ -32,7 +32,7 @@ clean:
 	@rm .coverage
 
 start_test_env:
-	docker-compose up -d mysql redis background
+	docker-compose up -d mysql redis
 
 stop_test_env:
 	docker-compose stop

@@ -47,6 +47,15 @@ def app():
 
 
 @fixture
+async def bg(loop, app):
+    from cloud_img.background import bg_manager
+    api = bg_manager().api()
+    await api.start()
+    yield api
+    await api.close()
+
+
+@fixture
 async def user(db_manager, faker):
     username = faker.name()
     password = faker.password()

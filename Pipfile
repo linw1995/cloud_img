@@ -11,14 +11,15 @@ aiohttp = "*"
 peewee = "*"
 peewee-async = "*"
 aiomysql = "*"
-aiohttp-security = "*"
+aiohttp_security = "*"
 jsonschema = "*"
-pyjwt = "*"
-pyyaml = "*"
-werkzeug = "*"
-aiohttp-debugtoolbar = "*"
+PyJWT = "*"
+PyYAML = "*"
+Werkzeug = "*"
+aiohttp_debugtoolbar = "*"
 lxml = "*"
-aiojobs = "*"
+pulsar-queue = {git = "https://github.com/quantmind/pulsar-queue.git", ref = "26ec8cbc291a830bd338c31f8a129cbd15f87a69"}
+"e1839a8" = {path = ".", editable = true}
 
 
 [dev-packages]
@@ -33,6 +34,8 @@ pytest-faker = "*"
 pytest-mock = "*"
 freezegun = "*"
 pytest-cov = "*"
+async_timeout = "*"
+pytest-timeout = "*"
 
 
 [requires]
