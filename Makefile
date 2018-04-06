@@ -31,11 +31,8 @@ clean:
 	@rm -rf .pytest_cache
 	@rm .coverage
 
-start_test_db:
-	@echo "----------------------------------------------------"
-	@echo "Starting mysql, see docker-compose.yml for user/pass"
-	@echo "----------------------------------------------------"
-	docker-compose -f docker-compose.yml up -d test_db
+start_test_env:
+	docker-compose up -d mysql redis background
 
-stop_test_db:
-	docker-compose -f docker-compose.yml stop test_db
+stop_test_env:
+	docker-compose stop

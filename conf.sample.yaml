@@ -7,12 +7,17 @@ production: &default
   db:
     mysql:
       host: localhost
-      port: 3306
+      port: 13306
       db: cloud_img
       user: root
       password:
       minsize: 10
       maxsize: 100
+    redis:
+      host: localhost
+      port: 16379
+      db: 0
+      password:
 
 debug:
   <<: *default
@@ -21,9 +26,14 @@ test:
   db:
     mysql:
       host: localhost
-      port: 3306
-      db: cloud_img_test
+      port: 13306
+      db: cloud_img
       user: root
       password:
       minsize: 10
       maxsize: 100
+    redis:
+      host: localhost
+      port: 16379
+      db: 0
+      password:

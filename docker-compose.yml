@@ -1,8 +1,47 @@
-test_db:
-    image: mysql
-    environment:
-        - MYSQL_ALLOW_EMPTY_PASSWORD=yes
-        - MYSQL_ROOT_HOST=%
-        - MYSQL_DATABASE=cloud_img_test
-    ports:
-        - 3306:3306
+version: '3.5'
+
+services:
+    mysql:
+        image: mysql
+        environment:
+            - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+            - MYSQL_ROOT_HOST=%
+            - MYSQL_DATABASE=cloud_img
+        ports:
+            - 13306:3306
+    redis:
+        image: redis
+        ports:
+            - 16379:6379
+    layout:
+        build: .
+        image: layout
+    app:
+        build:
+            context: .
+            cache_from:
+                - layout
+        command:
+            - python
+            - main.py
+            - -s
+            - "0.0.0.0"
+        expose:
+            - "8080"
+        ports:
+            - 18080:8080
+        depends_on:
+            - mysql
+            - redis
+            - background
+    background:
+        build:
+            context: .
+            cache_from:
+                - layout
+        command:
+            - python
+            - ./cloud_img/background.py
+        depends_on:
+            - redis
+            - mysql

@@ -3,19 +3,28 @@ language: python
 os:
   - linux
 
+env:
+  - DOCKER_COMPOSE_VERSION=1.20.1
+
+sudo: required
+
+services:
+  - docker
+
+before_install:
+  - sudo rm /usr/local/bin/docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin
+  - cp conf.sample.yaml conf.yaml
+  - make start_test_env
+
 python:
   - "3.6-dev"
 
 install:
   - make init
   - pip install codecov
-
-services:
-  - mysql
-
-before_install:
-  - mysql -e 'CREATE DATABASE IF NOT EXISTS cloud_img_test;'
-  - cp conf.sample.yaml conf.yaml
 
 script:
   - make cov
