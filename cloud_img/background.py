@@ -1,9 +1,58 @@
 import logging
 
-from pq.api import PulsarQueue
+from pq.server.apps import PulsarQueue, QueueApp, Rpc, RpcServer
+from pq.server.consumer import Consumer, Producer
+
+from cloud_img.models import create_db, create_db_manager
 
 
-def bg_manager():
+class MysqlMixin:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.mode = self.cfg.params.get('mode')
+        self.db_config = self.cfg.params.get('db_config')
+        self.db = create_db(self.mode, self.db_config)
+        self.db_manager = create_db_manager(self.db)
+
+
+class ProducerWithMysql(MysqlMixin, Producer):
+    pass
+
+
+class ConsumerWithMysql(MysqlMixin, Consumer):
+    pass
+
+
+class QueueAppWithMysql(QueueApp):
+    backend_factory = ConsumerWithMysql
+
+    def api(self):
+        return ProducerWithMysql(
+            self.cfg,
+            logger=self.logger,
+        )
+
+    def _start(self, actor, consume=True):  # pragma: no cover
+        """
+        consumer method, so no cover.
+        """
+        return ConsumerWithMysql(
+            self.cfg,
+            logger=self.logger,
+        ).start(actor, consume)
+
+
+class PulsarQueueWithMysql(PulsarQueue):
+    def build(self):
+        yield self.new_app(QueueAppWithMysql, callable=self.manager)
+        wsgi = self.cfg.params.get('wsgi')
+        if wsgi:  # pragma: no cover
+            if wsgi is True:
+                wsgi = Rpc
+            yield self.new_app(RpcServer, prefix='rpc', callable=self)
+
+
+def bg_manager(app):
     from cloud_img.utils import get_config
     config = get_config()['db']['redis']
     if config['password']:  # pragma: no cover
@@ -11,7 +60,11 @@ def bg_manager():
     else:
         uri = 'redis://{host}:{port}/{db}'.format_map(config)
     cfg = {'task_paths': ['cloud_img.jobs'], 'data_store': uri}
-    m = PulsarQueue(cfg=cfg)
+    m = PulsarQueueWithMysql(
+        cfg=cfg,
+        mode=app['mode'],
+        db_config=get_config()['db']['mysql'],
+    )
     m.console_parsed = False
     m.apps()[0].logger = logging.getLogger(__name__)
     return m
@@ -25,6 +78,6 @@ if __name__ == '__main__':
     mode = os.environ.get(ENV_MODE_KEY, ENV_MODE_DEFAULT)
     app = create_app(mode)
 
-    m = bg_manager()
+    m = bg_manager(app)
     m.console_parsed = True
     m.start()

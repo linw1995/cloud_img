@@ -7,6 +7,7 @@ from pytest import fixture
 from cloud_img import create_app
 from cloud_img.constants import MODE
 from cloud_img.models import User, create_db, create_db_manager
+from cloud_img.utils import get_config
 
 
 @fixture
@@ -30,12 +31,16 @@ def sleep():
 
 @fixture
 def db(app):
-    return create_db(app)
+    conf = get_config()['db']['mysql']
+    db = create_db(app['mode'], conf)
+    app['db'] = db
+    return db
 
 
 @fixture
 async def db_manager(loop, app, db):
-    db_manager = create_db_manager(app, db)
+    db_manager = create_db_manager(db)
+    app['db_manager'] = db_manager
     yield db_manager
     await db_manager.close()
 
@@ -49,7 +54,7 @@ def app():
 @fixture
 async def bg(loop, app):
     from cloud_img.background import bg_manager
-    api = bg_manager().api()
+    api = bg_manager(app).api()
     await api.start()
     yield api
     await api.close()

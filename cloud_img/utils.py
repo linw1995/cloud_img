@@ -14,7 +14,7 @@ from .constants import GLOBAL, MODE
 
 
 __all__ = ('get_config', 'AuthorizationPolicy', 'config_setup')
-_config = []
+_config = None
 _mode = None
 
 
@@ -27,7 +27,7 @@ def get_config():
     conf = _config.copy()
     if _mode is not None:  # pragma: no cover
         conf = conf[_mode]
-    conf[GLOBAL] = _config[GLOBAL]
+    conf[GLOBAL] = _config[GLOBAL].copy()
     return conf
 
 

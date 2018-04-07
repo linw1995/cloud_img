@@ -27,12 +27,10 @@ __all__ = (
 logger = logging.getLogger(__name__)
 
 
-def create_db(app):
+def create_db(mode, conf):
     """
     create database depends on the config.
     """
-    conf = get_config()['db']['mysql']
-
     logger.info('creating db with config: %r', conf)
 
     database = peewee_async.PooledMySQLDatabase(
@@ -44,8 +42,6 @@ def create_db(app):
         min_connections=conf['minsize'],
         max_connections=conf['maxsize'])
 
-    app['db'] = database
-
     db_proxy.initialize(database)
     tables = [
         Image,
@@ -54,7 +50,7 @@ def create_db(app):
         User,
     ]
 
-    if app['mode'] == MODE.TEST:  # pragma: no cover
+    if mode == MODE.TEST:  # pragma: no cover
         try:
             logger.info('dropping tables: %r', tables)
             database.drop_tables(tables)
@@ -74,13 +70,12 @@ def create_db(app):
     return db_proxy
 
 
-def create_db_manager(app, database):
+def create_db_manager(database):
     """
     create a db_manager to manage the database connections.
     """
     logger.info('creating db_manager')
-    manager = peewee_async.Manager(database=database, loop=app.loop)
-    app['db_manager'] = manager
+    manager = peewee_async.Manager(database=database)
 
     return manager
 
@@ -91,8 +86,13 @@ async def asetup(app):
     """
     if app['mode'] != MODE.TEST:  # pragma: no cover
         logger.info('database setup')
-        db = create_db(app)
-        create_db_manager(app, db)
+        conf = get_config()['db']['mysql']
+
+        db = create_db(app['mode'], conf)
+        app['db'] = db
+
+        db_manager = create_db_manager(db)
+        app['db_manager'] = db_manager
 
 
 async def acleanup(app):
