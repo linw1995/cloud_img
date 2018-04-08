@@ -1,12 +1,9 @@
 [[source]]
-
 url = "https://pypi.python.org/simple"
 verify_ssl = true
 name = "pypi"
 
-
 [packages]
-
 aiohttp = "*"
 peewee = "*"
 peewee-async = "*"
@@ -20,10 +17,9 @@ aiohttp_debugtoolbar = "*"
 lxml = "*"
 pulsar-queue = {git = "https://github.com/quantmind/pulsar-queue.git", ref = "26ec8cbc291a830bd338c31f8a129cbd15f87a69"}
 "e1839a8" = {path = ".", editable = true}
-
+aioredis = "*"
 
 [dev-packages]
-
 yapf = "*"
 "flake8" = "*"
 isort = "*"
@@ -37,7 +33,5 @@ pytest-cov = "*"
 async_timeout = "*"
 pytest-timeout = "*"
 
-
 [requires]
-
 python_version = "3.6"

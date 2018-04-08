@@ -1,12 +1,14 @@
+import asyncio
 import logging
 
+from aioredis import create_redis
 from pq.server.apps import PulsarQueue, QueueApp, Rpc, RpcServer
 from pq.server.consumer import Consumer, Producer
 
 from cloud_img.models import create_db, create_db_manager
 
 
-class MysqlMixin:
+class DBMixin:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.mode = self.cfg.params.get('mode')
@@ -14,12 +16,18 @@ class MysqlMixin:
         self.db = create_db(self.mode, self.db_config)
         self.db_manager = create_db_manager(self.db)
 
+        async def create_redis_client(uri):
+            self.redis_client = await create_redis(uri)
 
-class ProducerWithMysql(MysqlMixin, Producer):
+        # attach task into running loop
+        asyncio.ensure_future(create_redis_client(self.cfg.get('data_store')))
+
+
+class ProducerWithMysql(DBMixin, Producer):
     pass
 
 
-class ConsumerWithMysql(MysqlMixin, Consumer):
+class ConsumerWithMysql(DBMixin, Consumer):
     pass
 
 

@@ -2,7 +2,7 @@ import argparse
 
 from aiohttp import web
 
-from cloud_img import create_app, MODE
+from cloud_img import MODE, create_app
 
 
 def main():
