@@ -25,7 +25,9 @@ python:
 install:
   - make init
   - pip install codecov
-  - pipenv run python cloud_img/background.py -D
+
+before_script:
+  - pipenv run python cloud_img/background.py 1>background.log 2>&1 &
 
 script:
   - make cov
