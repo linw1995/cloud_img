@@ -1,47 +1,63 @@
+networks:
+  backend: {}
+services:
+  app:
+    build:
+      cache_from:
+      - layout
+      context: .
+    command:
+    - python
+    - main.py
+    - -s
+    - 0.0.0.0
+    depends_on:
+    - background
+    - mysql
+    - redis
+    expose:
+    - '8080'
+    networks:
+      backend: null
+    ports:
+    - published: 18080
+      target: 8080
+  background:
+    build:
+      cache_from:
+      - layout
+      context: .
+    command:
+    - python
+    - ./cloud_img/background.py
+    depends_on:
+    - mysql
+    - redis
+    networks:
+      backend: null
+  layout:
+    build:
+      context: .
+    image: layout
+    networks:
+      backend: null
+  mysql:
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: cloud_img
+      MYSQL_ROOT_HOST: '%'
+    image: mysql
+    networks:
+      backend: null
+    ports:
+    - published: 13306
+      target: 3306
+  redis:
+    image: redis
+    networks:
+      backend: null
+    ports:
+    - published: 16379
+      target: 6379
 version: '3.5'
 
-services:
-    mysql:
-        image: mysql
-        environment:
-            - MYSQL_ALLOW_EMPTY_PASSWORD=yes
-            - MYSQL_ROOT_HOST=%
-            - MYSQL_DATABASE=cloud_img
-        ports:
-            - 13306:3306
-    redis:
-        image: redis
-        ports:
-            - 16379:6379
-    layout:
-        build: .
-        image: layout
-    app:
-        build:
-            context: .
-            cache_from:
-                - layout
-        command:
-            - python
-            - main.py
-            - -s
-            - "0.0.0.0"
-        expose:
-            - "8080"
-        ports:
-            - 18080:8080
-        depends_on:
-            - mysql
-            - redis
-            - background
-    background:
-        build:
-            context: .
-            cache_from:
-                - layout
-        command:
-            - python
-            - ./cloud_img/background.py
-        depends_on:
-            - redis
-            - mysql
