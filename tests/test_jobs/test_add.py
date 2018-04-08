@@ -1,9 +1,6 @@
-import pytest
-
 from cloud_img.jobs import addition
 
 
-@pytest.mark.xfail(reason='work on win10, other platform not test yet')
 async def test_add_bg(bg):
     tasks = bg.tasks
     task_name = addition.name

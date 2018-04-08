@@ -1,9 +1,6 @@
-import pytest
-
 from cloud_img.jobs import query_user
 
 
-@pytest.mark.xfail(reason='work on win10, other platform not test yet')
 async def test_query_user_bg(bg, user):
     tasks = bg.tasks
     task_name = query_user.name
