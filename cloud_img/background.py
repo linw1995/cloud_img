@@ -23,19 +23,19 @@ class DBMixin:
         asyncio.ensure_future(create_redis_client(self.cfg.get('data_store')))
 
 
-class ProducerWithMysql(DBMixin, Producer):
+class ProducerWithDB(DBMixin, Producer):
     pass
 
 
-class ConsumerWithMysql(DBMixin, Consumer):
+class ConsumerWithDB(DBMixin, Consumer):
     pass
 
 
-class QueueAppWithMysql(QueueApp):
-    backend_factory = ConsumerWithMysql
+class QueueAppWithDB(QueueApp):
+    backend_factory = ConsumerWithDB
 
     def api(self):
-        return ProducerWithMysql(
+        return ProducerWithDB(
             self.cfg,
             logger=self.logger,
         )
@@ -44,15 +44,15 @@ class QueueAppWithMysql(QueueApp):
         """
         consumer method, so no cover.
         """
-        return ConsumerWithMysql(
+        return ConsumerWithDB(
             self.cfg,
             logger=self.logger,
         ).start(actor, consume)
 
 
-class PulsarQueueWithMysql(PulsarQueue):
+class PulsarQueueWithDB(PulsarQueue):
     def build(self):
-        yield self.new_app(QueueAppWithMysql, callable=self.manager)
+        yield self.new_app(QueueAppWithDB, callable=self.manager)
         wsgi = self.cfg.params.get('wsgi')
         if wsgi:  # pragma: no cover
             if wsgi is True:
@@ -68,7 +68,7 @@ def bg_manager(app):
     else:
         uri = 'redis://{host}:{port}/{db}'.format_map(config)
     cfg = {'task_paths': ['cloud_img.jobs'], 'data_store': uri}
-    m = PulsarQueueWithMysql(
+    m = PulsarQueueWithDB(
         cfg=cfg,
         mode=app['mode'],
         db_config=get_config()['db']['mysql'],
