@@ -1,25 +1,31 @@
 [[source]]
+
 url = "https://pypi.python.org/simple"
 verify_ssl = true
 name = "pypi"
 
+
 [packages]
+
 aiohttp = "*"
 peewee = "<=2.10.2"
 peewee-async = "*"
 aiomysql = "*"
-aiohttp_security = "*"
+aiohttp-security = "*"
 jsonschema = "*"
-PyJWT = "*"
-PyYAML = "*"
-Werkzeug = "*"
-aiohttp_debugtoolbar = "*"
+pyjwt = "*"
+pyyaml = "*"
+werkzeug = "*"
+aiohttp-debugtoolbar = "*"
 lxml = "*"
 pulsar-queue = {git = "https://github.com/quantmind/pulsar-queue.git", ref = "26ec8cbc291a830bd338c31f8a129cbd15f87a69"}
 "e1839a8" = {path = ".", editable = true}
 aioredis = "*"
+async-lru = "*"
+
 
 [dev-packages]
+
 yapf = "*"
 "flake8" = "*"
 isort = "*"
@@ -30,8 +36,10 @@ pytest-faker = "*"
 pytest-mock = "*"
 freezegun = "*"
 pytest-cov = "*"
-async_timeout = "*"
+async-timeout = "*"
 pytest-timeout = "*"
 
+
 [requires]
+
 python_version = "3.6"

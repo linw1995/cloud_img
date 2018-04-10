@@ -6,6 +6,7 @@ from pq.server.apps import PulsarQueue, QueueApp, Rpc, RpcServer
 from pq.server.consumer import Consumer, Producer
 
 from cloud_img.models import create_db, create_db_manager
+from cloud_img.models.upload_cfg import Client
 
 
 class DBMixin:
@@ -19,8 +20,12 @@ class DBMixin:
         async def create_redis_client(uri):
             self.redis_client = await create_redis(uri)
 
+        async def create_http_client():
+            self.http_client = Client()
+
         # attach task into running loop
         asyncio.ensure_future(create_redis_client(self.cfg.get('data_store')))
+        asyncio.ensure_future(create_http_client())
 
 
 class ProducerWithDB(DBMixin, Producer):

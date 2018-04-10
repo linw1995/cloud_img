@@ -1,40 +1,61 @@
-import asyncio
-import time
-
+from async_lru import alru_cache
 from pq import api
 
-from ..models import User
+from cloud_img.models import ImageWithUploadCfg, UploadCfg
+
+
+@alru_cache()
+async def get_image_data(redis_client, image_id):
+    data = await redis_client.hget('image', image_id)
+    return data
+
+
+@alru_cache()
+async def get_upload_cfg(mysql_client, upload_cfg_id):
+    upload_cfg = await mysql_client.get(UploadCfg, id=upload_cfg_id)
+    return upload_cfg
 
 
 @api.job()
-def addition(self, a=0, b=0):
-    return a + b
+async def upload_img(self, user_id, image_id, upload_cfg_id):
+    """
+    dispatch upload img job to broker.
 
+    Parameters
+    ----------
+    user_id : int
+        user's id
+    image_id : int
+        image's id
 
-@api.job()
-async def asynchronous(self, lag=1):
-    start = time.time()
-    await asyncio.sleep(lag)
-    return time.time() - start
+        also cache it into redis and lru_cache it into memory
+    upload_cfg_id : int
+        upload_cfg's id
 
+        lru_cache it into memory
 
-@api.job()
-async def query_user(self, user_id):
+    Usages
+    ------
+
+        >>> from cloud_img.background import bg_manager
+        >>> api = bg_manager().api()
+        >>> task = await api.tasks.queue('upload_img', 1, 1, 1, callback=False)
+        >>> task_id = task.id
+    """
     db_manager = self.backend.db_manager
-    user = await db_manager.get(User, id=user_id)
-    return user.username
-
-
-@api.job()
-async def cache_string(self, cache_id, string):
     redis_client = self.backend.redis_client
-    await redis_client.hset('cache', cache_id, string)
+    http_client = self.backend.http_client
 
+    image_bytes = await get_image_data(redis_client, image_id)
+    upload_cfg = await get_upload_cfg(db_manager, upload_cfg_id)
 
-@api.job()
-async def get_cache_string(self, cache_id):
-    redis_client = self.backend.redis_client
-    rv = await redis_client.hget('cache', cache_id)
-    # pulsar-queue will serialize,
-    # and bytes can't not be serialized by json or msgpack
-    return rv.decode('utf-8')
+    rv, _ = await upload_cfg.upload(http_client, image_bytes)
+
+    # TODO: validate rv
+    # TODO: handle exception
+
+    await db_manager.create(
+        ImageWithUploadCfg,
+        image_id=image_id,
+        upload_cfg_id=upload_cfg_id,
+        **rv)

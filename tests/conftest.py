@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+import aiohttp
 import freezegun
 from aiohttp_security.api import IDENTITY_KEY
 from aioredis import create_redis
@@ -44,7 +45,14 @@ async def redis_client(app):
     uri = build_redis_uri(conf)
     redis_client = await create_redis(uri)
     yield redis_client
-    await redis_client.close()
+    redis_client.close()
+    await redis_client.wait_closed()
+
+
+@fixture
+async def session():
+    async with aiohttp.ClientSession() as session:
+        yield session
 
 
 @fixture
@@ -65,7 +73,7 @@ def app():
 async def bg(loop, app):
     from cloud_img.background import bg_manager
     api = bg_manager(app).api()
-    await api.start()
+    api = await api.start()
     yield api
     await api.close()
 

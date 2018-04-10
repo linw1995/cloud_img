@@ -1,21 +1,18 @@
-from cloud_img.jobs import query_user
+from pq import api
+
+from cloud_img.models import User
 
 
-async def test_query_user_bg(bg, user):
-    tasks = bg.tasks
-    task_name = query_user.name
-
-    task = await tasks.queue(task_name, user_id=user.id)
-    assert task.result == user.username
-
-    task = await tasks.queue(
-        task_name, user_id=user.id, delay=0.1, callback=False)
-    task = await task.done_callback
-    assert task.result == user.username
+@api.job()
+async def query_user(self, user_id):
+    db_manager = self.backend.db_manager
+    user = await db_manager.get(User, id=user_id)
+    return user.username
 
 
 async def test_query_user_fg(bg, user):
     tasks = bg.tasks
+    tasks.registry.register(query_user)
     task_name = query_user.name
 
     task = await tasks.queue(task_name, user_id=user.id, queue=False)
