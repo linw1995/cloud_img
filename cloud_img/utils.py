@@ -38,6 +38,14 @@ def config_setup(app):
     _mode = app['mode']
 
 
+def build_redis_uri(config):
+    if config['password']:  # pragma: no cover
+        uri = 'redis://:{password}@{host}:{port}/{db}'.format_map(config)
+    else:
+        uri = 'redis://{host}:{port}/{db}'.format_map(config)
+    return uri
+
+
 def log_setup(app):
     """
     setup the log handler.

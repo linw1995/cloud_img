@@ -2,12 +2,13 @@ from datetime import datetime, timedelta
 
 import freezegun
 from aiohttp_security.api import IDENTITY_KEY
+from aioredis import create_redis
 from pytest import fixture
 
 from cloud_img import create_app
 from cloud_img.constants import MODE
 from cloud_img.models import User, create_db, create_db_manager
-from cloud_img.utils import get_config
+from cloud_img.utils import build_redis_uri, get_config
 
 
 @fixture
@@ -35,6 +36,15 @@ def db(app):
     db = create_db(app['mode'], conf)
     app['db'] = db
     return db
+
+
+@fixture
+async def redis_client(app):
+    conf = get_config()['db']['redis']
+    uri = build_redis_uri(conf)
+    redis_client = await create_redis(uri)
+    yield redis_client
+    await redis_client.close()
 
 
 @fixture

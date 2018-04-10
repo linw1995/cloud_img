@@ -61,12 +61,9 @@ class PulsarQueueWithDB(PulsarQueue):
 
 
 def bg_manager(app):
-    from cloud_img.utils import get_config
+    from cloud_img.utils import get_config, build_redis_uri
     config = get_config()['db']['redis']
-    if config['password']:  # pragma: no cover
-        uri = 'redis://:{password}@{host}:{port}/{db}'.format_map(config)
-    else:
-        uri = 'redis://{host}:{port}/{db}'.format_map(config)
+    uri = build_redis_uri(config)
     cfg = {'task_paths': ['cloud_img.jobs'], 'data_store': uri}
     m = PulsarQueueWithDB(
         cfg=cfg,
