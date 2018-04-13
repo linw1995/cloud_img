@@ -4,8 +4,10 @@ WORKDIR /usr/src/app
 
 COPY . .
 RUN pip install --no-cache-dir pipenv
-RUN pipenv install --system --skip-lock
+RUN pipenv install --skip-lock
 
-RUN pip install -e .
+RUN pipenv install -e . --skip-lock
 
 RUN cp conf.docker-compose.yaml conf.yaml
+
+ENTRYPOINT [ "pipenv", "run" ]
