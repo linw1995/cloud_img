@@ -47,7 +47,7 @@ async def test_upload_img_fg(bg, redis_client, db_manager, user,
     assert img_with_upload_cfg.image_url == 'https://example.com/1'
 
 
-async def test_upload_img_fg_to__sm_dot_ms(bg, redis_client, db_manager, user,
+async def test_upload_img_bg_to__sm_dot_ms(bg, redis_client, db_manager, user,
                                            session):
     tasks = bg.tasks
     task_name = upload_img.name
@@ -72,8 +72,7 @@ async def test_upload_img_fg_to__sm_dot_ms(bg, redis_client, db_manager, user,
         task_name,
         user_id=user.id,
         image_id=image.id,
-        upload_cfg_id=upload_cfg.id,
-        queue=False)
+        upload_cfg_id=upload_cfg.id)
     assert task.status_string == 'SUCCESS'
 
     img_with_upload_cfg = await db_manager.get(
