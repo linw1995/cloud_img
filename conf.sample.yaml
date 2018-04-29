@@ -6,18 +6,18 @@ global:
 production: &default
   db:
     mysql:
-      host: localhost
+      host: 127.0.0.1
       port: 13306
       db: cloud_img
       user: root
-      password:
+      password: ''
       minsize: 10
       maxsize: 100
     redis:
-      host: localhost
+      host: 127.0.0.1
       port: 16379
       db: 0
-      password:
+      password: ''
 
 debug:
   <<: *default
@@ -25,15 +25,15 @@ debug:
 test:
   db:
     mysql:
-      host: localhost
+      host: 127.0.0.1
       port: 13306
       db: cloud_img
       user: root
-      password:
+      password: ''
       minsize: 10
       maxsize: 100
     redis:
-      host: localhost
+      host: 127.0.0.1
       port: 16379
       db: 0
-      password:
+      password: ''

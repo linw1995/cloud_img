@@ -43,10 +43,10 @@ services:
       backend: null
   mysql:
     environment:
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
       MYSQL_DATABASE: cloud_img
       MYSQL_ROOT_HOST: '%'
-    image: mysql
+    image: mysql:5.7
     networks:
       backend: null
     ports:
