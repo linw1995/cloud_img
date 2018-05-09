@@ -1,3 +1,4 @@
+import asyncio
 import functools
 import logging
 import logging.handlers
@@ -5,6 +6,8 @@ import pathlib
 import re
 import time
 
+import aioredis
+import pymysql
 import yaml
 from aiohttp import web
 from aiohttp_security import AbstractAuthorizationPolicy, authorized_userid
@@ -13,9 +16,11 @@ from lxml import etree
 from .constants import GLOBAL, MODE
 
 
-__all__ = ('get_config', 'AuthorizationPolicy', 'config_setup')
+__all__ = ('get_config', 'AuthorizationPolicy', 'config_setup',
+           'wait_for_foundation')
 _config = None
 _mode = None
+logger = logging.getLogger(__name__)
 
 
 def get_config():
@@ -39,7 +44,7 @@ def config_setup(app):
 
 
 def build_redis_uri(config):
-    if config['password']:  # pragma: no cover
+    if config.get('password'):  # pragma: no cover
         uri = 'redis://:{password}@{host}:{port}/{db}'.format_map(config)
     else:
         uri = 'redis://{host}:{port}/{db}'.format_map(config)
@@ -232,3 +237,45 @@ def query_regex(resource, raw_pattern):
 def datetime2unix(dt):
     tt = dt.timetuple()
     return time.mktime(tt)
+
+
+def check_mysql(conf):
+    """ check mysql exists or not. """
+    try:
+        connect = pymysql.connect(
+            db=conf['db'],
+            host=conf['host'],
+            port=conf['port'],
+            user=conf['user'],
+            password=conf['password'],
+            connect_timeout=1,
+        )
+        connect.close()
+    except (TimeoutError, pymysql.err.OperationalError):
+        return False
+    return True
+
+
+def check_redis(conf):
+    """ check redis exists or not. """
+    loop = asyncio.new_event_loop()
+
+    async def connect():
+        uri = build_redis_uri(conf)
+        connection = await aioredis.create_connection(uri, timeout=1)
+        connection.close()
+        await connection.wait_closed()
+
+    try:
+        loop.run_until_complete(connect())
+    except (asyncio.TimeoutError, ConnectionRefusedError):
+        return False
+    return True
+
+
+def wait_for_foundation(conf=None):
+    """ wait for the foundation like mysql and redis setup success. """
+    while not check_mysql(conf['db']['mysql']) or \
+            not check_redis(conf['db']['redis']):  # pragma: no cover
+        logger.info('wait for foundation...')
+        time.sleep(1)

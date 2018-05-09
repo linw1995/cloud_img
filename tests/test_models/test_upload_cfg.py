@@ -97,7 +97,7 @@ def test_query_regex_response():
         upload_cfg.query_response(cutted_response_body)
 
 
-async def test_JSONField(db, db_manager, faker):
+async def test_JSONField(loop, db, db_manager, faker):
     class TestModel(peewee.Model):
         data = JSONField()
 
