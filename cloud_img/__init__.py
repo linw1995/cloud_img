@@ -3,7 +3,8 @@ __version__ = '0.1.0'
 from aiohttp import web
 from aiohttp_security import CookiesIdentityPolicy, setup as security_setup
 
-from .utils import AuthorizationPolicy, config_setup, log_setup
+from .utils import (AuthorizationPolicy, config_setup, log_setup,
+                    wait_for_foundation, get_config)
 from .constants import MODE
 from .models import setup as db_setup
 from .routes import setup as router_setup
@@ -31,6 +32,10 @@ def create_app(mode=MODE.DEBUG):
 
     config_setup(app)
     log_setup(app)
+
+    conf = get_config()
+    wait_for_foundation(conf)
+
     db_setup(app)
     security_setup(app, CookiesIdentityPolicy(), AuthorizationPolicy(app=app))
     router_setup(app)
