@@ -9,7 +9,10 @@ from cloud_img.models import create_db, create_db_manager
 from cloud_img.models.upload_cfg import Client
 
 
-class DBMixin:
+class SetupMixin:
+    """
+    SetupMixin setup for the Producer and Consumer.
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.mode = self.cfg.params.get('mode')
@@ -27,20 +30,39 @@ class DBMixin:
         asyncio.ensure_future(create_redis_client(self.cfg.get('data_store')))
         asyncio.ensure_future(create_http_client())
 
+    def close(self, msg=None):
+        """
+        Clean up.
+        """
+        async def close_redis_client():
+            self.redis_client.close()
+            await self.redis_client.wait_closed()
 
-class ProducerWithDB(DBMixin, Producer):
+        async def close_http_client():
+            await self.http_client.close()
+
+        cw_redis_client = asyncio.ensure_future(close_redis_client())
+        cw_http_client = asyncio.ensure_future(close_http_client())
+        cw_inherit = super(SetupMixin, self).close(msg=msg)
+
+        self._closing_waiter = asyncio.gather(cw_http_client, cw_redis_client,
+                                              cw_inherit)
+        return self._closing_waiter
+
+
+class CustomProducer(SetupMixin, Producer):
     pass
 
 
-class ConsumerWithDB(DBMixin, Consumer):
+class CustomConsumer(SetupMixin, Consumer):
     pass
 
 
-class QueueAppWithDB(QueueApp):
-    backend_factory = ConsumerWithDB
+class CustomQueueApp(QueueApp):
+    backend_factory = CustomConsumer
 
     def api(self):
-        return ProducerWithDB(
+        return CustomProducer(
             self.cfg,
             logger=self.logger,
         )
@@ -49,15 +71,15 @@ class QueueAppWithDB(QueueApp):
         """
         consumer method, so no cover.
         """
-        return ConsumerWithDB(
+        return CustomConsumer(
             self.cfg,
             logger=self.logger,
         ).start(actor, consume)
 
 
-class PulsarQueueWithDB(PulsarQueue):
+class CustomPulsarQueuea(PulsarQueue):
     def build(self):
-        yield self.new_app(QueueAppWithDB, callable=self.manager)
+        yield self.new_app(CustomQueueApp, callable=self.manager)
         wsgi = self.cfg.params.get('wsgi')
         if wsgi:  # pragma: no cover
             if wsgi is True:
@@ -70,7 +92,7 @@ def bg_manager(app):
     config = get_config()['db']['redis']
     uri = build_redis_uri(config)
     cfg = {'task_paths': ['cloud_img.jobs'], 'data_store': uri}
-    m = PulsarQueueWithDB(
+    m = CustomPulsarQueuea(
         cfg=cfg,
         mode=app['mode'],
         db_config=get_config()['db']['mysql'],
