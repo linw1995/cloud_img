@@ -76,6 +76,9 @@ class Client(Adapter):
             response_body = await resp.text()
         return response_body
 
+    async def close(self):
+        await self.session.close()
+
 
 class UploadCfg(peewee.Model):
     """
